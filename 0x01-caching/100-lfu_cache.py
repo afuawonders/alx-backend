@@ -1,100 +1,66 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
+""" BaseCaching module
 """
-    BaseCache module
-"""
-
 from base_caching import BaseCaching
 
 
 class LFUCache(BaseCaching):
-    """ LRUCache define a LRU algorithm to use cache
-
-      To use:
-      >>> my_cache = BasicCache()
-      >>> my_cache.print_cache()
-      Current cache:
-
-      >>> my_cache.put("A", "Hello")
-      >>> my_cache.print_cache()
-      A: Hello
-
-      Ex:
-      >>> my_cache.print_cache()
-      Current cache:
-      A: Hello
-      B: World
-      C: Holberton
-      D: School
-      >>> print(my_cache.get("B"))
-      World
-      >>> my_cache.put("E", "Battery")
-      DISCARD: A
-      >>> my_cache.print_cache()
-      Current cache:
-      B: World
-      C: Holberton
-      D: School
-      E: Battery
+    """
+    FIFOCache defines a FIFO caching system
     """
 
     def __init__(self):
-        """ Initiliaze
+        """
+        Initialize the class with the parent's init method
         """
         super().__init__()
-        self.leastrecent = []
+        self.usage = []
+        self.frequency = {}
 
-    def put(self, key=None, item=None):
+    def put(self, key, item):
         """
-            modify cache data
-
-            Args:
-                key: of the dict
-                item: value of the key
+        Cache a key-value pair
         """
-        if key and item is not None:
-            valuecache = self.get(key)
-            # Make a new
-            if valuecache is None:
-                if len(self.cache_data) >= BaseCaching.MAX_ITEMS:
-                    keydel = self.leastrecent
-                    lendel = len(keydel) - 1
-                    del self.cache_data[keydel[lendel]]
-                    print("DISCARD: {}".format(self.leastrecent.pop()))
-            else:
-                del self.cache_data[key]
+        if key is None or item is None:
+            pass
+        else:
+            length = len(self.cache_data)
+            if length >= BaseCaching.MAX_ITEMS and key not in self.cache_data:
+                lfu = min(self.frequency.values())
+                lfu_keys = []
+                for k, v in self.frequency.items():
+                    if v == lfu:
+                        lfu_keys.append(k)
+                if len(lfu_keys) > 1:
+                    lru_lfu = {}
+                    for k in lfu_keys:
+                        lru_lfu[k] = self.usage.index(k)
+                    discard = min(lru_lfu.values())
+                    discard = self.usage[discard]
+                else:
+                    discard = lfu_keys[0]
 
-            if key in self.leastrecent:
-                idxtodel = self.search_first(self.leastrecent, key)
-                self.leastrecent.pop(idxtodel)
-                self.leastrecent.insert(0, key)
+                print("DISCARD: {}".format(discard))
+                del self.cache_data[discard]
+                del self.usage[self.usage.index(discard)]
+                del self.frequency[discard]
+            # update usage frequency
+            if key in self.frequency:
+                self.frequency[key] += 1
             else:
-                self.leastrecent.insert(0, key)
-
+                self.frequency[key] = 1
+            if key in self.usage:
+                del self.usage[self.usage.index(key)]
+            self.usage.append(key)
             self.cache_data[key] = item
 
     def get(self, key):
         """
-            modify cache data
-
-            Args:
-                key: of the dict
-
-            Return:
-                value of the key
+        Return the value linked to a given key, or None
         """
-        valuecache = self.cache_data.get(key)
-
-        if valuecache:
-            idxtodel = self.search_first(self.leastrecent, key)
-            self.leastrecent.pop(idxtodel)
-            self.leastrecent.insert(0, key)
-
-        return valuecache
-
-    @staticmethod
-    def search_first(mrulist, key):
-        for i in range(0, len(mrulist)):
-            if mrulist[i] == key:
-                return (i)
-
+        if key is not None and key in self.cache_data.keys():
+            del self.usage[self.usage.index(key)]
+            self.usage.append(key)
+            self.frequency[key] += 1
+            return self.cache_data[key]
         return None
