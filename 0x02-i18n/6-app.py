@@ -1,9 +1,20 @@
 #!/usr/bin/env python3
-""" Basic Babel setup """
-from flask import Flask, render_template, request, g
-from flask_babel import Babel, _
-from typing import Union
+"""Mock logging in"""
 
+from flask import Flask, request, render_template, g
+from flask_babel import Babel
+
+
+class Config:
+    """Flask app Config"""
+    LANGUAGES = ['en', 'fr']
+    BABEL_DEFAULT_LOCALE = 'en'
+    BABEL_DEFAULT_TIMEZONE = 'UTC'
+
+
+app = Flask(__name__)
+app.config.from_object(Config)
+babel = Babel(app)
 
 users = {
     1: {"name": "Balou", "locale": "fr", "timezone": "Europe/Paris"},
@@ -13,72 +24,42 @@ users = {
 }
 
 
-class Config(object):
-    """ Configuration Babel 
-        set default values for lang time and locale
+def get_user() -> dict:
     """
-    LANGUAGES = ["en", "fr"]
-    BABEL_DEFAULT_TIMEZONE = 'UTC'
-    BABEL_DEFAULT_LOCALE = 'en'
-
-
-app = Flask(__name__, template_folder='templates')
-app.config.from_object(Config)
-babel = Babel(app)
+    Returns a user dictionary or None if the ID cannot be found or
+    if login_as was not passed.
+    """
+    user_id = request.args.get('login_as')
+    if user_id is not None and int(user_id) in users.keys():
+        return users.get((int(user_id)))
+    return None
 
 
 @app.before_request
-def before_request(login_as: int = None):
-    """ Request of each function
+def before_request():
     """
-    user: dict = get_user()
-    g.user = user
-
-
-def get_user() -> Union[dict, None]:
-    """ Get the user of the dict
-
-        Return User
+    Use get_user to find a user if any, and set it as a
+    global on flask.g.user.
     """
-    login_user = request.args.get('login_as', None)
-
-    if login_user is None:
-        return None
-
-    user: dict = {}
-    user[login_user] = users.get(int(login_user))
-
-    return user[login_user]
+    g.user = get_user()
 
 
 @babel.localeselector
-def get_locale():
-    """ Locale language
-
-        Return:
-            Best match to the language
-    """
-    locale = request.args.get('locale', None)
-
-    if locale and locale in app.config['LANGUAGES']:
+def get_locale() -> str:
+    """Determine preferred locale"""
+    locale = request.args.get('locale')
+    if locale in app.config['LANGUAGES']:
         return locale
-
-    locale = request.headers.get('locale', None)
-    if locale and locale in app.config['LANGUAGES']:
-        return locale
-
+    if g.user and g.user['locale'] in app.config['LANGUAGES']:
+        return g.user['locale']
     return request.accept_languages.best_match(app.config['LANGUAGES'])
 
 
-@app.route('/', methods=['GET'], strict_slashes=False)
-def hello_world():
-    """ Greeting
-
-        Return:
-            Initial template html
-    """
-    return render_template('6-index.html')
+@app.route("/")
+def index() -> str:
+    """Return 5-index.html"""
+    return render_template("5-index.html")
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port="5000")
+    app.run(debug=True)
