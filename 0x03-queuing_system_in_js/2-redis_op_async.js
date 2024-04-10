@@ -20,14 +20,19 @@ function setNewSchool(schoolName, value) {
 const get = promisify(client.get).bind(client);
 
 async function displaySchoolValue(schoolName) {
-    const res = await client.get(schoolName).catch((error) => {
-      if (error) {
-        console.log(error);
-        throw error;
-      }
-    });
-    console.log(res);
-  }
+    try {
+        const value = await new Promise((resolve, reject) => {
+            client.get(schoolName, (err, reply) => {
+                if (err) reject(err);
+                resolve(reply);
+            });
+        });
+        
+        console.log(value);
+    } catch (error) {
+        console.error(`Error retrieving value for ${schoolName}: ${error}`);
+    }
+}
 
 displaySchoolValue("Holberton");
 setNewSchool("HolbertonSanFrancisco", "100");
